@@ -1,0 +1,110 @@
+# sfSwiftMailerExtendedPlugin (for symfony 1.4) #
+
+A large traffic website has a lot of emails to sent.
+People are allowed to register, request forgotten passwords, receive newsletters etc.
+For all this scenarios we need to send emails:
+
+* After registration the system sends a registration email, which the user has to approve
+* The system sends a confirmation email, saying the registration was successfull, as soon as the user confirmed the link in the registration email
+* Registered users can recommend certain articles to their friends - system sends email
+* The system sends newsletters
+* The system sends log messages, reports to administrators, messages
+* etc
+
+We can give some of these mails a higher priority. For example registration mails should be send in every case. But user messages have lower
+importance because we have an internal messaging service for example.
+It is necesary that important emails always receive their destination. Symfony lacks a definition of different email transports.
+With sfSwiftMailerExtendedPlugin you are able to define different email transports.
+For example gmail for public emails, paid smtp server for approved/registration emails.
+There is also the possibility, that one of the services fails due to connection problems, service interruptions and so on.
+You are also able to define fallback transports.
+At least one transport has to be defined in factories.yml.
+
+
+Installation
+------------
+
+* Install the plugin (via a package)
+
+        $ symfony plugin:install sfSwiftMailerExtendedPlugin
+
+
+* Or install the plugin
+
+        $ svn co http//svn.symfony-project.com/plugins/sfSwiftMailerExtendedPlugin/trunk plugins/sfSwiftMailerExtendedPlugin
+
+
+* Activate the plugin in the `config/ProjectConfiguration.class.php`
+
+        [php]
+        class ProjectConfiguration extends sfProjectConfiguration
+        {
+          public function setup()
+          {
+            $this->enablePlugins(array(
+              '...',
+              'sfSwiftMailerExtendedPlugin',
+              '...'
+            ));
+          }
+        }
+
+
+* Set mailer class in factories.yml in your application
+
+        [yml]
+        all:
+          mailer:
+            class: sfMailerExtended
+            param:
+              logging:           %SF_LOGGING_ENABLED%
+              charset:           %SF_CHARSET%
+              delivery_strategy: realtime
+              default_transport: local
+              max_retries      : 3
+              transports:
+               local:
+                 class: Swift_SmtpTransport
+                 param:
+                   host:       localhost
+                   port:       25
+                   encryption: ~
+                   username:   ~
+                   password:   ~
+                     fallback:   local
+               gmail:
+                 class: Swift_SmtpTransport
+                 param:
+                   host:       localhost
+                   port:       25
+                   encryption: ~
+                   username:   ~
+                   password:   ~
+                     fallback:   gmail
+
+
+* Clear the cache
+
+        $ symfony cc
+
+
+Send email
+----------
+
+* Sending emails from an action
+
+        [php]
+        $message = Swift_Message::newInstance()
+          ->setFrom(array('admin@example.com' => 'Example.com'))
+          ->setTo('user@example.com')
+          ->setReplyTo('support@example.com')
+          ->setSubject('Subject')
+          ->setBody('Body');
+        
+        try {
+           $numOfMails = $this->getMailer()->send($message, $failures, 'local');      
+        } catch(Exception $e) {
+            $this->getUser()->setFlash('error', 'Error: ' . $e->getMessage());
+        }
+
+
